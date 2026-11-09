@@ -63,8 +63,9 @@ select,.btn{background:var(--sf);border:1px solid var(--ln);border-radius:8px;pa
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.13/hls.min.js"></script>
 <script>
-// Cùng origin với API. Đổi sang API khác bằng ?api=https://domain-cua-ban
-const API = (new URLSearchParams(location.search).get('api') || '').replace(/\/$/, '');
+// Chế độ: (1) có server cùng origin hoặc ?api=URL -> dùng server; (2) không có (vd GitHub Pages) -> gọi thẳng AniMapper.
+// ?proxy=URL_server để phát HLS qua proxy khi chạy chế độ (2).
+let API = '', DIRECT = false, PROXY = '';
 const $ = s => document.querySelector(s), view = $('#v');
 let hls = null;
 
@@ -75,12 +76,44 @@ const cover = m => { const c = m.coverImage; return (c && (c.extraLarge || c.lar
 const plain = h => String(h || '').replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '');
 const store = { get: k => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
 
-async function get(path) {
-  const r = await fetch(API + path);
+const UP = 'https://api.animapper.net/api/v1';
+{ const p = new URLSearchParams(location.search);
+  for (const k of ['api', 'proxy']) if (p.has(k)) store.set('cfg:' + k, p.get(k)); }
+const clean = s => (s || '').replace(/\/$/, '');
+async function detect() {
+  PROXY = clean(store.get('cfg:proxy'));
+  API = clean(store.get('cfg:api'));
+  if (API) return;
+  try { const d = await (await fetch('/health')).json(); if (!d.ok) throw 0; }
+  catch { DIRECT = true; }
+}
+async function json(url) {
+  const r = await fetch(url);
   const d = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(d.message || 'Lỗi ' + r.status);
   return d;
 }
+const b64u = o => btoa(JSON.stringify(o)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+function direct(path) {
+  const u = new URL(path, location.origin), q = u.searchParams, seg = u.pathname.split('/').filter(Boolean);
+  const U = (p, o) => { const s = new URLSearchParams(); for (const [k, v] of Object.entries(o)) if (v) s.set(k, v); return `${UP}${p}?${s}`; };
+  if (seg[1] === 'search') return json(`${UP}/search?${q}`);
+  const id = seg[2], sub = seg[3], provider = q.get('provider'), server = q.get('server');
+  if (!sub) return json(U('/metadata', { id }));
+  if (sub === 'servers') return json(U('/stream/episodes/servers', { id, provider }));
+  if (sub === 'episodes') return json(U('/stream/episodes', { id, provider, server }));
+  return (async () => {
+    const list = await json(U('/stream/episodes', { id, provider, server }));
+    const want = decodeURIComponent(seg[4]);
+    const ep = (list.episodes || []).find(e => String(e.episodeNumber) === want);
+    if (!ep) throw new Error('Không có tập này');
+    const src = await json(U('/stream/source', { episodeData: ep.episodeId, provider, server: server || ep.server }));
+    if (src.type === 'HLS' && PROXY)
+      src.url = `${PROXY}/api/proxy?u=${encodeURIComponent(src.url)}` + (src.proxyHeaders ? `&h=${b64u(src.proxyHeaders)}` : '');
+    return { episode: ep, source: src };
+  })();
+}
+const get = path => DIRECT ? direct(path) : json(API + path);
 const card = m => `<a class="card" href="#/a/${m.id}"><div class="im" style="background-image:url('${esc(cover(m))}')"></div><b>${esc(title(m))}</b></a>`;
 
 /* ---------- Trang chủ / tìm kiếm ---------- */
@@ -112,7 +145,7 @@ function play(src) {
     hls = new Hls();
     hls.loadSource(src.url);
     hls.attachMedia(v);
-    hls.on(Hls.Events.ERROR, (_, e) => { if (e.fatal) box.innerHTML = '<div class="msg">Không phát được tập này. Thử đổi server khác.</div>'; });
+    hls.on(Hls.Events.ERROR, (_, e) => { if (e.fatal) box.innerHTML = `<div class="msg">Không phát được tập này. ${DIRECT && !PROXY ? 'Nguồn HLS cần proxy: thêm ?proxy=URL_server_của_bạn vào địa chỉ trang.' : 'Thử đổi server khác.'}</div>`; });
   } else v.src = src.url;
 }
 
@@ -192,7 +225,7 @@ $('#f').addEventListener('submit', e => {
   if (v) location.hash = '#/s/' + encodeURIComponent(v);
 });
 addEventListener('hashchange', route);
-route();
+detect().then(route);
 </script>
 </body>
 </html>
