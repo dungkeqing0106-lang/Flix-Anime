@@ -88,7 +88,13 @@ async function detect() {
   catch { DIRECT = true; }
 }
 async function json(url) {
-  const r = await fetch(url);
+  let r;
+  try { r = await fetch(url); }
+  catch {
+    throw new Error(DIRECT
+      ? 'Không kết nối được AniMapper từ trình duyệt (thường do bị chặn CORS). Hãy dùng server của bạn: mở trang với ?api=https://ten-server-cua-ban.onrender.com'
+      : 'Không kết nối được server. Nếu dùng Render gói miễn phí, đợi khoảng 1 phút cho server khởi động rồi tải lại.');
+  }
   const d = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(d.message || 'Lỗi ' + r.status);
   return d;
