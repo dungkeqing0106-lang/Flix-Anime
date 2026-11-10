@@ -213,10 +213,10 @@ dialog h3 { margin-bottom: 14px; }
       </button>
     </form>
     <select id="provider" aria-label="Nguồn anime">
-      <option value="gogoanime">gogoanime</option>
-      <option value="zoro">zoro</option>
+      <option value="hianime">hianime</option>
+      <option value="animekai">animekai</option>
       <option value="animepahe">animepahe</option>
-      <option value="9anime">9anime</option>
+      <option value="kickassanime">kickassanime</option>
     </select>
     <button class="btn" id="openSettings" type="button" aria-label="Cài đặt API">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
@@ -232,8 +232,8 @@ dialog h3 { margin-bottom: 14px; }
     <h3>Cài đặt API</h3>
     <div class="field">
       <label for="cfgBase">Địa chỉ Consumet API</label>
-      <input id="cfgBase" type="url" placeholder="http://localhost:3000" autocomplete="off">
-      <span class="hint">Chạy server Consumet của bạn (mặc định cổng 3000) hoặc dán địa chỉ API đã host. Không có dấu / ở cuối.</span>
+      <input id="cfgBase" type="url" placeholder="https://api.consumet.org" autocomplete="off">
+      <span class="hint">Mặc định dùng API công khai của Consumet. Nếu nó chậm hoặc lỗi, dán địa chỉ bản Consumet bạn tự host (phải là https khi dùng trên điện thoại). localhost chỉ dùng được khi mở file trên chính máy chạy server.</span>
     </div>
     <div class="field">
       <label for="cfgProxy">Proxy HLS (tùy chọn)</label>
@@ -266,14 +266,18 @@ dialog h3 { margin-bottom: 14px; }
     try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* bỏ qua */ }
   }
 
-  const DEFAULTS = { base: 'http://localhost:3000', provider: 'gogoanime', proxy: '' };
-  const cfg = Object.assign({}, DEFAULTS, lsGet('tanuki.cfg', {}));
+  const DEFAULTS = { base: 'https://api.consumet.org', provider: 'hianime', proxy: '' };
   const SERVERS = {
-    gogoanime: ['gogocdn', 'vidstreaming', 'streamsb'],
-    zoro: ['vidcloud', 'vidstreaming', 'streamsb', 'streamtape'],
+    hianime: ['vidstreaming', 'vidcloud', 'streamsb', 'streamtape'],
+    animekai: [],
     animepahe: [],
-    '9anime': ['vidstream', 'filemoon', 'streamtape', 'mycloud']
+    kickassanime: []
   };
+  const cfg = Object.assign({}, DEFAULTS, lsGet('tanuki.cfg', {}));
+  // Cấu hình cũ (gogoanime/zoro, localhost) không còn phù hợp: đưa về mặc định mới.
+  if (!(cfg.provider in SERVERS)) cfg.provider = DEFAULTS.provider;
+  if (/^http:\/\/localhost:3000\/?$/.test(cfg.base) && location.protocol === 'https:') cfg.base = DEFAULTS.base;
+  lsSet('tanuki.cfg', cfg);
   const infoCache = new Map();
   const app = $('#app');
   let nav = 0;
@@ -322,8 +326,7 @@ dialog h3 { margin-bottom: 14px; }
     const q = server ? 'server=' + enc(server) : '';
     const byPath = `/anime/${p}/watch/${enc(epId)}${q ? '?' + q : ''}`;
     const byQuery = `/anime/${p}/watch?episodeId=${enc(epId)}${q ? '&' + q : ''}`;
-    const queryFirst = p === 'zoro' || p === 'animepahe' || p === '9anime';
-    return tryPaths(queryFirst ? [byQuery, byPath] : [byPath, byQuery]);
+    return tryPaths([byQuery, byPath]);
   }
 
   /* ---------- views ---------- */
