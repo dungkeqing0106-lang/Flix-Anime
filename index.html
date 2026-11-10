@@ -2,7 +2,8 @@
 <html lang="vi">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="format-detection" content="telephone=no">
 <title>Flix Anime</title>
 <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.13/hls.min.js"></script>
@@ -146,6 +147,28 @@ nav a{border-radius:20px;padding:6px 0}nav a.on{background:rgba(255,79,154,.18);
 #sf #sb{width:36px;height:36px;border-radius:50%;padding:0;display:flex;align-items:center;justify-content:center;background:var(--sf)!important;border:1px solid var(--ln)!important;color:#fff!important;-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}
 #sf input{display:none;position:fixed;top:66px;left:12px;right:12px;width:auto;height:44px;border-radius:999px;padding:0 18px;background:var(--gl);-webkit-backdrop-filter:blur(26px) saturate(180%);backdrop-filter:blur(26px) saturate(180%);border:1px solid var(--ln);z-index:7}
 #sf.open input{display:block}
+.card{min-width:0}
+.card .im{aspect-ratio:2/3;width:100%}
+.card .im img{width:100%;height:100%;object-fit:cover;display:block}
+.card h3{line-height:1.4;height:2.8em;margin-top:8px}
+.card small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rw .card{flex:0 0 160px;width:160px}
+.grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+@media(max-width:640px){.rw .card{flex-basis:130px;width:130px}.grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}}
+header{position:relative;background:none;-webkit-backdrop-filter:none;backdrop-filter:none;border:0;border-radius:0;box-shadow:none}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%;-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none}
+body{min-height:100dvh;-webkit-touch-callout:none;-webkit-font-smoothing:antialiased;touch-action:manipulation;-webkit-user-select:none;user-select:none;padding-bottom:calc(96px + env(safe-area-inset-bottom))}
+input,textarea{-webkit-user-select:text;user-select:text;font-size:16px}
+header{padding-top:calc(env(safe-area-inset-top) + 10px)}
+#sf input{top:calc(env(safe-area-inset-top) + 66px)}
+main{padding-left:max(20px,env(safe-area-inset-left));padding-right:max(20px,env(safe-area-inset-right))}
+.rw{-webkit-overflow-scrolling:touch;scrollbar-width:none}.rw::-webkit-scrollbar{display:none}
+.card,.btn,.more,.eps button,.cr button,.ls,nav a,.tl,.chips a{transition:transform .15s,opacity .15s}
+.card:active,.btn:active,.more:active,.eps button:active,.cr button:active,.ls:active,nav a:active,.tl:active,.chips a:active{transform:scale(.96);opacity:.85}
+.btn,.more,.chips a,.eps button{min-height:40px}
+#tt{bottom:calc(96px + env(safe-area-inset-bottom))}
+.ctl{padding-bottom:calc(10px + env(safe-area-inset-bottom))}
+@media(max-width:640px){#md{align-items:flex-end;padding:0}.box{width:100%;max-height:85dvh;border-radius:28px 28px 0 0;padding-bottom:calc(24px + env(safe-area-inset-bottom))}main{padding-top:8px}.hero{margin-top:-8px}}
 @media(max-width:640px){.det{grid-template-columns:1fr}.det img{max-width:200px}}
 </style>
 <meta name="theme-color" content="#0b0710">
@@ -159,7 +182,6 @@ nav a{border-radius:20px;padding:6px 0}nav a.on{background:rgba(255,79,154,.18);
 <header>
   <a class="logo" href="#/"><svg width="28" height="28" viewBox="-32 -32 64 64" aria-hidden="true"><defs><linearGradient id="pg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe3ef"/><stop offset="1" stop-color="#ff7ab8"/></linearGradient><path id="pt" d="M0-3C-10-8-12-22-3-27L0-23L3-27C12-22 10-8 0-3Z" fill="url(#pg)"/></defs><use href="#pt"/><use href="#pt" transform="rotate(72)"/><use href="#pt" transform="rotate(144)"/><use href="#pt" transform="rotate(216)"/><use href="#pt" transform="rotate(288)"/><circle r="3" fill="#ffcf5a"/></svg>Flix<b>Anime</b></a>
   <form id="sf"><button type="button" id="sb" aria-label="Tìm kiếm"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5"/></svg></button><input id="q" type="search" placeholder="Tìm phim hoạt hình…" aria-label="Tìm phim"></form>
-  <button id="acc"></button>
 </header>
 <nav id="nav"></nav>
 <main id="app"></main>
@@ -178,7 +200,7 @@ const save=()=>{try{localStorage.setItem('cp_db',JSON.stringify(db))}catch(e){to
 const me=()=>db.cur&&db.u[db.cur]?db.u[db.cur]:db.g;
 async function hash(p,s){if(!window.crypto||!crypto.subtle)return btoa(unescape(encodeURIComponent(s+p)));const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s+p));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
 const avh=(n,av,sz)=>`<span class="av" style="width:${sz}px;height:${sz}px;font-size:${sz*.45}px;${av?`background-image:url(${av})`:''}">${av?'':esc(n[0].toUpperCase())}</span>`;
-function renderAcc(){const b=$('#acc');if(db.cur&&db.u[db.cur]){b.className='';b.innerHTML=avh(db.cur,db.u[db.cur].av,32)+'<span>'+esc(db.cur)+'</span>';b.onclick=()=>location.hash='#/me'}else{b.className='out';b.textContent='Đăng nhập';b.onclick=()=>auth('in')}}
+function renderAcc(){const b=$('#acc');if(!b)return;if(db.cur&&db.u[db.cur]){b.className='';b.innerHTML=avh(db.cur,db.u[db.cur].av,32)+'<span>'+esc(db.cur)+'</span>';b.onclick=()=>location.hash='#/me'}else{b.className='out';b.textContent='Đăng nhập';b.onclick=()=>auth('in')}}
 function modal(h){$('#md').innerHTML='<div class="box">'+h+'</div>';$('#md').hidden=false}
 const closeM=()=>$('#md').hidden=true;
 $('#md').onclick=e=>{if(e.target.id==='md')closeM()};
@@ -226,9 +248,16 @@ const SRC={
 let S=localStorage.getItem('cp_src');if(!SRC[S])S='kk';
 const GEN='hanh-dong:Hành động,tinh-cam:Tình cảm,hai-huoc:Hài hước,co-trang:Cổ trang,tam-ly:Tâm lý,hinh-su:Hình sự,chien-tranh:Chiến tranh,the-thao:Thể thao,vo-thuat:Võ thuật,vien-tuong:Viễn tưởng,phieu-luu:Phiêu lưu,khoa-hoc:Khoa học,kinh-di:Kinh dị,am-nhac:Âm nhạc,than-thoai:Thần thoại,tai-lieu:Tài liệu,gia-dinh:Gia đình,chinh-kich:Chính kịch,bi-an:Bí ẩn,hoc-duong:Học đường,kinh-dien:Kinh điển'.split(',').map(x=>x.split(':'));
 const U=(c,p)=>!p?'':/^https?:/.test(p)?p:c+'/'+String(p).replace(/^\//,'');
-const nItem=(s,m,c)=>({s,slug:m.slug,name:m.name,origin_name:m.origin_name||m.original_name,thumb_url:U(c,m.thumb_url),poster_url:U(c,m.poster_url),year:m.year,episode_current:m.episode_current||m.current_episode,quality:m.quality,lang:m.lang||m.language,category:Array.isArray(m.category)?m.category:[],country:Array.isArray(m.country)?m.country:[],total:m.total_episodes});
+const nItem=(s,m,c)=>({s,slug:m.slug,name:m.name,origin_name:m.origin_name||m.original_name,thumb_url:U(c,m.thumb_url),poster_url:U(c,m.poster_url),year:m.year,episode_current:m.episode_current||m.current_episode,quality:m.quality,lang:m.lang||m.language,category:Array.isArray(m.category)?m.category:[],country:Array.isArray(m.country)?m.country:[],total:m.total_episodes,type:m.type});
 async function fetchList(src,k,key,page,extra=''){
   const o=SRC[src],q='page='+page,e=encodeURIComponent(key||'');
+  if(k==='anime'){
+    const mv=key==='le',none={items:[],pages:1},hh=x=>!x.category.length||x.category.some(c=>c.slug==='hoat-hinh'||/hoạt hình/i.test(c.name||''));
+    const [a,b]=await Promise.all([fetchList(src,'type','hoat-hinh',page).catch(()=>none),o.t==='n'?none:fetchList(src,'type',mv?'phim-le':'phim-bo',page,'category=hoat-hinh').catch(()=>none)]);
+    const seen=new Set(),items=[];
+    for(const m of[...a.items.filter(x=>isMovie(x)===mv),...b.items.filter(hh)])if(!seen.has(m.slug)){seen.add(m.slug);items.push(m)}
+    return{items,raw:a.items.length+b.items.length,pages:Math.max(a.pages,b.pages)}
+  }
   if(o.t==='n'){
     const b={new:'/films/phim-moi-cap-nhat',type:'/films/danh-sach/'+key,genre:'/films/the-loai/'+key,search:'/films/search?keyword='+e}[k];
     const r=await fetch(o.base+b+(b.includes('?')?'&':'?')+q);if(!r.ok)throw 0;const j=await r.json();
@@ -252,7 +281,7 @@ async function fetchDetail(src,slug){
   const c=j.data?.APP_DOMAIN_CDN_IMAGE||new URL(o.base).origin;
   return{...nItem(src,m,c),content:m.content,time:m.time,category:m.category||[],country:m.country||[],actor:m.actor||[],episodes:j.episodes||m.episodes||[]}
 }
-const isMovie=m=>/full|\(1\/1\)/i.test(m.episode_current||'')||+m.total===1;
+const isMovie=m=>m.type==='single'?true:m.type==='series'?false:/full|\(1\/1\)/i.test(m.episode_current||'')||+m.total===1;
 const same=(x,m)=>x.slug===m.slug&&(x.s||'kk')===m.s;
 const pick=m=>({s:m.s,slug:m.slug,name:m.name,origin_name:m.origin_name,thumb_url:m.thumb_url,poster_url:m.poster_url,year:m.year,episode_current:m.episode_current});
 const card=(m,x)=>`<a class="card" href="#/p/${m.s||'kk'}/${esc(m.slug)}"><div class="im"><img loading="lazy" src="${esc(img(m.thumb_url||m.poster_url))}" alt="${esc(m.name)}">${m.episode_current?`<span class="tag">${esc(m.episode_current)}</span>`:''}</div><h3>${esc(m.name)}</h3><small>${x||(esc(m.origin_name||'')+(m.year?' · '+m.year:''))}</small></a>`;
@@ -269,7 +298,7 @@ async function list(title,kind,key,pre='',extra='',flt=null){
       for(let t=0;t<4&&n<12;t++){
         const d=await fetchList(s0,kind,key,page,extra),it=flt?d.items.filter(flt):d.items;
         n+=it.length;tot+=it.length;$('#g').insertAdjacentHTML('beforeend',it.map(m=>card(m)).join(''));
-        more=d.items.length>0&&page<d.pages;if(!more)break;page++;
+        more=(d.raw??d.items.length)>0&&page<d.pages;if(!more)break;page++;
       }
       if(!tot){$('#ft').innerHTML=`<p class="msg">${SRC[s0].n} không có kết quả phù hợp. Vào tab Cá nhân để đổi nguồn phim.</p>`;return}
       $('#ft').innerHTML=more?'<button class="more" id="mb">Xem thêm</button>':'';
@@ -391,7 +420,7 @@ function route(){
   if(t==='fav'||t==='his')return saved(t);
   if(!t)return home();
   const mv=arg==='phim-le';
-  list(mv?'Phim lẻ hoạt hình':'Phim bộ hoạt hình','type','hoat-hinh','','',m=>mv===isMovie(m));
+  list(mv?'Phim lẻ hoạt hình':'Phim bộ hoạt hình','anime',mv?'le':'bo');
 }
 try{const ic0=document.querySelector('link[rel=apple-touch-icon]').href,fi=document.createElement('link');fi.rel='icon';fi.href=ic0;document.head.append(fi);const mf={name:'Flix Anime',short_name:'Flix Anime',start_url:location.href.split('#')[0],display:'standalone',background_color:'#0b0710',theme_color:'#ff4f9a',icons:[{src:ic0,sizes:'192x192',type:'image/png'},{src:ic0,sizes:'512x512',type:'image/png',purpose:'any'}]},l=document.createElement('link');l.rel='manifest';l.href=URL.createObjectURL(new Blob([JSON.stringify(mf)],{type:'application/manifest+json'}));document.head.append(l)}catch(e){}
 addEventListener('hashchange',route);renderAcc();route();
