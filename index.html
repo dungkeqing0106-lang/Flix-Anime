@@ -170,6 +170,21 @@ main{padding-left:max(20px,env(safe-area-inset-left));padding-right:max(20px,env
 .ctl{padding-bottom:calc(10px + env(safe-area-inset-bottom))}
 @media(max-width:640px){#md{align-items:flex-end;padding:0}.box{width:100%;max-height:85dvh;border-radius:28px 28px 0 0;padding-bottom:calc(24px + env(safe-area-inset-bottom))}main{padding-top:8px}.hero{margin-top:-8px}}
 @media(max-width:640px){.det{grid-template-columns:1fr}.det img{max-width:200px}}
+
+/* === Fix v2 === */
+:root{--hh:calc(env(safe-area-inset-top) + 70px)}
+/* 1+3: thẻ Xem tiếp cố định kích thước, không bị tiêu đề dài kéo giãn */
+.cw{flex:0 0 240px;width:240px;min-width:0;max-width:240px}
+.cw .im{width:100%;aspect-ratio:16/9}
+.cw .im img{display:block;width:100%;height:100%;object-fit:cover}
+.cw h3{display:block;width:100%;min-width:0}
+.row{margin-bottom:20px}
+.rw{padding-bottom:0;align-items:flex-start}
+/* 2: header trong suốt, nổi trên banner, không còn nền đen */
+header{position:absolute;top:0;left:0;right:0;z-index:7;background:linear-gradient(180deg,rgba(11,7,16,.55),rgba(11,7,16,0));-webkit-backdrop-filter:none;backdrop-filter:none;border:0;box-shadow:none}
+main{padding-top:var(--hh)}
+.hero{margin-top:calc(-1 * var(--hh))}
+@media(max-width:640px){main{padding-top:var(--hh)}.hero{margin-top:calc(-1 * var(--hh))}}
 </style>
 <meta name="theme-color" content="#0b0710">
 <meta name="apple-mobile-web-app-capable" content="yes">
