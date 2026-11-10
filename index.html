@@ -185,6 +185,15 @@ header{position:absolute;top:0;left:0;right:0;z-index:7;background:linear-gradie
 main{padding-top:var(--hh)}
 .hero{margin-top:calc(-1 * var(--hh))}
 @media(max-width:640px){main{padding-top:var(--hh)}.hero{margin-top:calc(-1 * var(--hh))}}
+
+/* === Fix v3 === */
+/* trình phát: bỏ khoảng trống dưới thanh điều khiển (safe-area chỉ áp dụng khi toàn màn hình) */
+.ctl{padding-bottom:10px}
+.player:fullscreen .ctl,.player:-webkit-full-screen .ctl{padding-bottom:calc(10px + env(safe-area-inset-bottom))}
+/* Top 10: hết rung/trượt dọc, số không bị cắt */
+.rw{overflow-y:hidden;overscroll-behavior-x:contain}
+.tp{overflow:hidden;scroll-snap-align:start}
+.tp .n{bottom:0;line-height:.8}
 </style>
 <meta name="theme-color" content="#0b0710">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -361,12 +370,22 @@ function play(ep,mode){
     if(a==='b')v.currentTime=Math.max(0,v.currentTime-10);
     if(a==='f')v.currentTime=Math.min(dur()||1e9,v.currentTime+10);
     if(a==='p')v.paused?v.play():v.pause();
-    if(a==='pip'){try{Promise.resolve(d.pictureInPictureElement?d.exitPictureInPicture():v.requestPictureInPicture?v.requestPictureInPicture():v.webkitSetPresentationMode(v.webkitPresentationMode==='picture-in-picture'?'inline':'picture-in-picture')).catch(()=>toast('Trình duyệt chưa hỗ trợ hình trong hình'))}catch(_){toast('Trình duyệt chưa hỗ trợ hình trong hình')}}
+    if(a==='pip'){const msg=()=>toast(navigator.standalone?'Ứng dụng màn hình chính chưa cho bật hình trong hình, hãy mở bằng Safari':'Trình duyệt chưa hỗ trợ hình trong hình');
+      try{
+        if(v.webkitSupportsPresentationMode&&v.webkitSupportsPresentationMode('picture-in-picture')){
+          const go=()=>{try{v.webkitSetPresentationMode(v.webkitPresentationMode==='picture-in-picture'?'inline':'picture-in-picture')}catch(_){msg()}};
+          v.paused?v.play().then(go,go):go();
+        }else if(d.pictureInPictureEnabled&&v.requestPictureInPicture){
+          Promise.resolve(d.pictureInPictureElement?d.exitPictureInPicture():v.requestPictureInPicture()).catch(msg);
+        }else msg();
+      }catch(_){msg()}}
     if(a==='fs'){if(d.fullscreenElement||d.webkitFullscreenElement)(d.exitFullscreen||d.webkitExitFullscreen).call(d);else if(box.requestFullscreen)box.requestFullscreen();else if(box.webkitRequestFullscreen)box.webkitRequestFullscreen();else if(v.webkitEnterFullscreen)v.webkitEnterFullscreen()}
   };
   let ht;const sh=()=>{box.classList.remove('hide');clearTimeout(ht);ht=setTimeout(()=>{if(!v.paused)box.classList.add('hide')},3000)};
   box.onmousemove=box.ontouchstart=sh;sh();
-  if(window.Hls&&Hls.isSupported()){hls=new Hls();hls.loadSource(ep.link_m3u8);hls.attachMedia(v);hls.on(Hls.Events.ERROR,(_,e)=>{if(e.fatal&&ep.link_embed)play(ep,'embed')})}
+  v.disablePictureInPicture=false;v.setAttribute('x-webkit-airplay','allow');
+  if(v.canPlayType('application/vnd.apple.mpegurl')){v.src=ep.link_m3u8;v.onerror=()=>{if(ep.link_embed)play(ep,'embed')}}
+  else if(window.Hls&&Hls.isSupported()){hls=new Hls();hls.loadSource(ep.link_m3u8);hls.attachMedia(v);hls.on(Hls.Events.ERROR,(_,e)=>{if(e.fatal&&ep.link_embed)play(ep,'embed')})}
   else v.src=ep.link_m3u8;
 }
 async function detail(src,slug){
