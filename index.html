@@ -194,6 +194,125 @@ main{padding-top:var(--hh)}
 .rw{overflow-y:hidden;overscroll-behavior-x:contain}
 .tp{overflow:hidden;scroll-snap-align:start}
 .tp .n{bottom:0;line-height:.8}
+
+/* === Fix v4: toàn màn hình tự xoay ngang === */
+html.fsl,html.fsl body{overflow:hidden}
+.player.fake{position:fixed;z-index:100;margin:0;border-radius:0;aspect-ratio:auto;top:0;left:0;width:100vw;height:100vh;height:100dvh;background:#000}
+@media (orientation:portrait){
+  .player.fake{left:100vw;width:100vh;width:100dvh;height:100vw;transform-origin:top left;transform:rotate(90deg)}
+}
+.player.fake video{object-fit:contain}
+.player.fake .ctl{padding-bottom:calc(14px + env(safe-area-inset-bottom))}
+
+/* === Fix v5: tối ưu iPad === */
+@media (min-width:768px){
+  :root{--hh:calc(env(safe-area-inset-top) + 88px);--px:max(36px,env(safe-area-inset-left))}
+  header{padding-left:var(--px);padding-right:max(36px,env(safe-area-inset-right));padding-bottom:16px}
+  .logo{font-size:30px;gap:10px}.logo svg{width:38px;height:38px}
+  #acc,#sf button{min-height:44px}
+  main{max-width:1440px;padding-left:var(--px);padding-right:max(36px,env(safe-area-inset-right))}
+  .hero{height:min(58vh,600px);margin-left:calc(-1 * var(--px));margin-right:calc(-1 * max(36px,env(safe-area-inset-right)));border-radius:0 0 40px 40px}
+  #hc{left:var(--px);bottom:84px;max-width:660px}
+  #hc h2{font-size:clamp(34px,4.6vw,54px)}
+  #hc .btn{padding:14px 34px;font-size:18px}
+  .dots{right:var(--px);bottom:34px}
+  .row{margin-bottom:30px}
+  .row h2{font-size:24px;margin-bottom:14px}
+  .rw{gap:20px}
+  .rw .card{flex:0 0 184px;width:184px}
+  .card h3{font-size:15px}
+  .cw{flex:0 0 300px;width:300px;max-width:300px}
+  .cw h3{font-size:16px}
+  .tp{flex:0 0 235px;height:264px}
+  .tp img{width:176px;height:264px}
+  .tp .n{font-size:176px}
+  .grid{grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:22px}
+  .tiles{grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px}
+  .det{grid-template-columns:300px 1fr;gap:36px;align-items:start}
+  .det img{max-width:none}
+  .det h1{font-size:34px}
+  .desc{font-size:17px;line-height:1.65}
+  .chips a,.chips span{font-size:15px}
+  .player{margin-top:20px}
+  .eps button{min-height:44px;min-width:64px;font-size:16px}
+  .btn,.more,.bar button{min-height:44px}
+  nav{left:50%;right:auto;width:min(640px,calc(100% - 48px));transform:translateX(-50%)}
+  nav a{font-size:13px}
+  .box{width:min(480px,100%);padding:30px}
+  #md{align-items:center}
+  .card2{max-width:760px}
+}
+@media (min-width:1024px){
+  .hero{height:min(62vh,660px)}
+  .rw .card{flex-basis:200px;width:200px}
+  .cw{flex-basis:340px;width:340px;max-width:340px}
+  .tp{flex-basis:250px;height:285px}.tp img{width:190px;height:285px}.tp .n{font-size:190px}
+  .grid{grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:24px}
+  .det{grid-template-columns:340px 1fr}
+}
+/* iPad: dùng bút/ngón tay nên bỏ hiệu ứng hover dính */
+@media (hover:none){.card:hover img{transform:none}.card:hover .im::after{opacity:0}}
+
+/* === Fix v6: màn hình tỉ lệ 4:3 (iPad 1024x768, 768x1024, màn 4:3) === */
+/* Ngang 4:3 */
+@media (min-width:768px) and (min-aspect-ratio:5/4) and (max-aspect-ratio:7/5){
+  :root{--hh:calc(env(safe-area-inset-top) + 78px);--px:max(28px,env(safe-area-inset-left))}
+  header{padding-bottom:12px}
+  .logo{font-size:26px}.logo svg{width:32px;height:32px}
+  .hero{height:min(56vh,520px)}
+  #hc{bottom:64px;max-width:min(580px,60vw)}
+  #hc h2{font-size:clamp(30px,4vw,44px)}
+  #hc .chips{margin:8px 0 14px}
+  .row{margin-bottom:22px}
+  .rw .card{flex-basis:clamp(168px,17vw,208px);width:clamp(168px,17vw,208px)}
+  .cw{flex-basis:clamp(270px,30vw,330px);width:clamp(270px,30vw,330px);max-width:clamp(270px,30vw,330px)}
+  .tp{flex-basis:clamp(210px,22vw,250px);height:clamp(250px,27vw,285px)}
+  .tp img{width:clamp(160px,17vw,190px);height:clamp(250px,27vw,285px)}
+  .tp .n{font-size:clamp(150px,17vw,190px)}
+  .grid{grid-template-columns:repeat(5,minmax(0,1fr));gap:20px}
+  .tiles{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .det{grid-template-columns:clamp(240px,26vw,320px) 1fr;gap:30px}
+  /* trình phát luôn nằm gọn trong màn hình, không bị cắt đáy */
+  .player{width:min(100%,calc((100dvh - 150px) * 16 / 9));margin-left:auto;margin-right:auto}
+  .player.fake{width:100vw;margin:0}
+  .bar,#ps{max-width:100%}
+  nav{width:min(600px,calc(100% - 48px))}
+}
+/* Dọc 4:3 */
+@media (min-width:600px) and (min-aspect-ratio:5/7) and (max-aspect-ratio:4/5){
+  :root{--px:max(30px,env(safe-area-inset-left))}
+  .hero{height:min(44vh,520px)}
+  #hc{bottom:60px;max-width:70vw}
+  #hc h2{font-size:clamp(30px,5.4vw,46px)}
+  .rw .card{flex-basis:clamp(150px,23vw,190px);width:clamp(150px,23vw,190px)}
+  .cw{flex-basis:clamp(260px,38vw,310px);width:clamp(260px,38vw,310px);max-width:clamp(260px,38vw,310px)}
+  .tp{flex-basis:clamp(200px,30vw,240px);height:clamp(240px,36vw,270px)}
+  .tp img{width:clamp(150px,22vw,180px);height:clamp(240px,36vw,270px)}
+  .tp .n{font-size:clamp(140px,22vw,180px)}
+  .grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:18px}
+  .tiles{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .det{grid-template-columns:clamp(220px,32vw,280px) 1fr;gap:28px}
+  .player{width:100%}
+}
+
+/* === Fix v7: iPad xoay ngang -> thanh bên phải; xoay dọc -> thanh dưới === */
+@media (min-width:768px) and (min-height:600px) and (orientation:landscape){
+  :root{--sb:calc(104px + env(safe-area-inset-right))}
+  body{padding-left:0;padding-right:var(--sb);padding-bottom:calc(28px + env(safe-area-inset-bottom))}
+  header{left:0;right:var(--sb)}
+  nav{
+    top:50%;bottom:auto;left:auto;right:max(14px,env(safe-area-inset-right));
+    width:84px;max-height:calc(100dvh - 40px);
+    transform:translateY(-50%);
+    flex-direction:column;justify-content:center;gap:6px;padding:10px 6px;
+    border-radius:32px;overflow-y:auto;scrollbar-width:none
+  }
+  nav::-webkit-scrollbar{display:none}
+  nav a{flex:0 0 auto;width:100%;padding:12px 0;border-radius:24px;font-size:12px}
+  #tt{bottom:24px}
+  .player.fake{left:0}
+}
+}
 </style>
 <meta name="theme-color" content="#0b0710">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -353,9 +472,10 @@ function saved(kind){
   if($('#clr'))$('#clr').onclick=()=>{me().his=[];save();saved('his')};
 }
 let hls,tm;
+document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement){try{screen.orientation&&screen.orientation.unlock&&screen.orientation.unlock()}catch(_){}}});
 const fmt=t=>{t=Math.max(0,t|0);const h=t/3600|0,m=t%3600/60|0,x=t%60;return(h?h+':'+String(m).padStart(2,'0'):m)+':'+String(x).padStart(2,'0')};
 function play(ep,mode){
-  const box=$('#pl');if(hls){hls.destroy();hls=null}
+  const box=$('#pl');document.documentElement.classList.remove('fsl');if(hls){hls.destroy();hls=null}
   if(!ep.link_m3u8&&!ep.link_embed){box.innerHTML='<p class="msg">Tập này chưa có link phát.</p>';return}
   if(mode==='embed'||!ep.link_m3u8){box.innerHTML=`<iframe src="${esc(ep.link_embed)}" allowfullscreen allow="autoplay; fullscreen; picture-in-picture"></iframe>`;return}
   const ICP='M7 4l13 8-13 8z',ICA='M8 4v16M16 4v16';
@@ -379,7 +499,18 @@ function play(ep,mode){
           Promise.resolve(d.pictureInPictureElement?d.exitPictureInPicture():v.requestPictureInPicture()).catch(msg);
         }else msg();
       }catch(_){msg()}}
-    if(a==='fs'){if(d.fullscreenElement||d.webkitFullscreenElement)(d.exitFullscreen||d.webkitExitFullscreen).call(d);else if(box.requestFullscreen)box.requestFullscreen();else if(box.webkitRequestFullscreen)box.webkitRequestFullscreen();else if(v.webkitEnterFullscreen)v.webkitEnterFullscreen()}
+    if(a==='fs'){
+      const real=d.fullscreenElement||d.webkitFullscreenElement;
+      if(real){(d.exitFullscreen||d.webkitExitFullscreen).call(d);return}
+      if(box.classList.contains('fake')){box.classList.remove('fake');document.documentElement.classList.remove('fsl');return}
+      const rq=box.requestFullscreen||box.webkitRequestFullscreen;
+      if(rq){
+        Promise.resolve(rq.call(box)).then(()=>{try{screen.orientation&&screen.orientation.lock&&screen.orientation.lock('landscape').catch(()=>{})}catch(_){}}).catch(()=>{});
+      }else{
+        /* iPhone không cho fullscreen phần tử: dùng toàn màn hình giả và tự xoay ngang */
+        box.classList.add('fake');document.documentElement.classList.add('fsl');sh();
+      }
+    }
   };
   let ht;const sh=()=>{box.classList.remove('hide');clearTimeout(ht);ht=setTimeout(()=>{if(!v.paused)box.classList.add('hide')},3000)};
   box.onmousemove=box.ontouchstart=sh;sh();
