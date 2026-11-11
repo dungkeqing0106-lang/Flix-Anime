@@ -313,6 +313,22 @@ html.fsl,html.fsl body{overflow:hidden}
   .player.fake{left:0}
 }
 }
+
+/* === Fix v8: trình phát toàn màn hình, tránh tai thỏ / thanh trạng thái / thanh home === */
+.player.fake .ctl{
+  padding-left:calc(20px + env(safe-area-inset-left));
+  padding-right:calc(20px + env(safe-area-inset-right));
+  padding-bottom:calc(18px + env(safe-area-inset-bottom));
+}
+/* cầm dọc, trình phát đã xoay 90°: cạnh trên màn hình = cạnh trái trình phát, cạnh dưới (thanh home) = cạnh phải */
+@media (orientation:portrait){
+  .player.fake .ctl{
+    padding-left:calc(20px + env(safe-area-inset-top));
+    padding-right:calc(20px + env(safe-area-inset-bottom));
+    padding-bottom:20px;
+  }
+}
+.player.fake .ctl{padding-top:44px;background:linear-gradient(transparent,rgba(0,0,0,.8))}
 </style>
 <meta name="theme-color" content="#0b0710">
 <meta name="apple-mobile-web-app-capable" content="yes">
