@@ -339,7 +339,8 @@ function toast(t){const e=document.createElement('div');e.id='tt';e.textContent=
 /* ---- Dữ liệu & tài khoản (lưu trong trình duyệt) ---- */
 let db={u:{},cur:null,g:{fav:[],his:[]}};
 try{db=Object.assign(db,JSON.parse(localStorage.getItem('cp_db')||'{}'))}catch(e){}
-const save=()=>{try{localStorage.setItem('cp_db',JSON.stringify(db))}catch(e){toast('Bộ nhớ đầy, hãy dùng ảnh avatar nhỏ hơn')}};
+const persist=()=>{try{localStorage.setItem('cp_db',JSON.stringify(db))}catch(e){toast('Bộ nhớ đầy, hãy dùng ảnh avatar nhỏ hơn')}};
+let pushT;const save=()=>{persist();if(db.cur&&db.u[db.cur]&&db.u[db.cur].cloud){clearTimeout(pushT);pushT=setTimeout(push,2500)}};
 const me=()=>db.cur&&db.u[db.cur]?db.u[db.cur]:db.g;
 async function hash(p,s){if(!window.crypto||!crypto.subtle)return btoa(unescape(encodeURIComponent(s+p)));const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s+p));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
 const avh=(n,av,sz)=>`<span class="av" style="width:${sz}px;height:${sz}px;font-size:${sz*.45}px;${av?`background-image:url(${av})`:''}">${av?'':esc(n[0].toUpperCase())}</span>`;
@@ -353,14 +354,56 @@ function restore(txt){
     if(ex){const m=(a,b)=>[...a,...b.filter(x=>!a.some(y=>y.slug===x.slug))];ex.fav=m(ex.fav,d.fav);ex.his=m(ex.his,d.his).slice(0,60)}else db.u[o.user]=d;
     db.cur=o.user;save();closeM();renderAcc();route();toast('Đã khôi phục dữ liệu')}
   catch(e){toast('File sao lưu không hợp lệ')}}
+
+/* ---- Sao lưu đám mây (Firebase Auth + Firestore, gọi bằng REST) ----
+   Điền apiKey và projectId của dự án Firebase để bật. Để trống thì chỉ dùng tài khoản trên máy + file sao lưu. */
+const CLOUD={apiKey:'AIzaSyBAHBUrFVD4KQYmhzVUV80TKb0DoQxyftg',projectId:'flixanime-1f434'};
+const cloudOn=()=>!!(CLOUD.apiKey&&CLOUD.projectId);
+const cmail=n=>n+'@flixanime.app';
+async function cAuth(n,p,up){
+  const r=await fetch('https://identitytoolkit.googleapis.com/v1/accounts:'+(up?'signUp':'signInWithPassword')+'?key='+CLOUD.apiKey,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:cmail(n),password:p,returnSecureToken:true})});
+  const j=await r.json();if(!r.ok)throw new Error((j.error&&j.error.message)||'ERR');
+  return{uid:j.localId,rt:j.refreshToken,tok:j.idToken,exp:Date.now()+(+j.expiresIn-60)*1000}}
+async function cTok(u){const c=u.cloud;if(c.tok&&c.exp>Date.now())return c.tok;
+  const r=await fetch('https://securetoken.googleapis.com/v1/token?key='+CLOUD.apiKey,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'grant_type=refresh_token&refresh_token='+encodeURIComponent(c.rt)});
+  const j=await r.json();if(!r.ok)throw new Error('TOKEN');c.tok=j.id_token;c.rt=j.refresh_token;c.exp=Date.now()+(+j.expires_in-60)*1000;persist();return c.tok}
+const cDoc=u=>`https://firestore.googleapis.com/v1/projects/${CLOUD.projectId}/databases/(default)/documents/users/${u.cloud.uid}`;
+async function cGet(u){const r=await fetch(cDoc(u),{headers:{Authorization:'Bearer '+await cTok(u)}});if(r.status===404)return null;const j=await r.json();if(!r.ok)throw new Error('GET');return JSON.parse(j.fields.d.stringValue)}
+async function cPut(u){const t=Date.now();
+  const r=await fetch(cDoc(u)+'?updateMask.fieldPaths=d',{method:'PATCH',headers:{Authorization:'Bearer '+await cTok(u),'Content-Type':'application/json'},body:JSON.stringify({fields:{d:{stringValue:JSON.stringify({fav:u.fav,his:u.his,av:u.av,t})}}})});
+  if(!r.ok)throw new Error('PUT');u.sync=t;persist()}
+async function push(){const u=db.cur&&db.u[db.cur];if(cloudOn()&&u&&u.cloud)try{await cPut(u)}catch(e){}}
+function mergeIn(u,d){const m=(a,b)=>[...a,...b.filter(x=>!a.some(y=>y.slug===x.slug))];u.fav=m(u.fav,d.fav||[]);u.his=m(u.his,d.his||[]).slice(0,60);if(!u.av&&d.av)u.av=d.av}
+let lastPull=0;
+async function pullSync(u,force){
+  if(!cloudOn()||!u||!u.cloud||(!force&&Date.now()-lastPull<60000))return false;lastPull=Date.now();
+  try{const d=await cGet(u);
+    if(d&&d.t>(u.sync||0)){u.fav=d.fav||[];u.his=d.his||[];if(d.av)u.av=d.av;u.sync=d.t;persist();renderAcc();return true}
+    if(!d)await cPut(u);return false}catch(e){return null}}
+async function cloudLogin(n,p,up,er){
+  if(p.length<6){er.textContent='Mật khẩu cần ít nhất 6 ký tự';return false}
+  const loc=db.u[n];
+  if(up&&loc){er.textContent='Tên này đã có người dùng';return false}
+  er.textContent='Đang kết nối…';
+  let c,m='';
+  try{c=await cAuth(n,p,up)}catch(e){m=e.message||'';
+    /* tài khoản cũ chỉ có trên máy: đúng mật khẩu thì tự tạo bản đám mây */
+    if(!up&&/EMAIL_NOT_FOUND|INVALID_LOGIN_CREDENTIALS|INVALID_PASSWORD/.test(m)&&loc&&loc.h===await hash(p,loc.s)){try{c=await cAuth(n,p,true)}catch(_){}}}
+  if(!c){er.textContent=/EMAIL_EXISTS/.test(m)?'Tên này đã có người dùng':/EMAIL_NOT_FOUND|INVALID|PASSWORD/.test(m)?'Sai tên đăng nhập hoặc mật khẩu':/WEAK/.test(m)?'Mật khẩu cần ít nhất 6 ký tự':/TOO_MANY/.test(m)?'Thử quá nhiều lần, hãy đợi một lúc':'Không kết nối được đám mây';return false}
+  const sl=Math.random().toString(36).slice(2);
+  const u=loc||(db.u[n]={av:null,fav:[],his:[]});u.s=sl;u.h=await hash(p,sl);u.cloud=c;
+  if(up){u.fav=[...db.g.fav];u.his=[...db.g.his];db.g={fav:[],his:[]}}
+  try{const d=await cGet(u);if(d)mergeIn(u,d);await cPut(u)}catch(e){toast('Chưa đồng bộ được, sẽ thử lại sau')}
+  db.cur=n;save();return true}
 const readF=(f,cb)=>{const r=new FileReader();r.onload=()=>cb(r.result);r.readAsText(f)};
 function auth(mode){
   const up=mode==='up';
-  modal(`<h2>${up?'Đăng ký':'Đăng nhập'}</h2><form id="af"><input class="fld" id="un" placeholder="Tên đăng nhập" autocomplete="username" required><input class="fld" id="pw" type="password" placeholder="Mật khẩu (từ 4 ký tự)" autocomplete="${up?'new':'current'}-password" required><p class="er" id="er"></p><button class="pri">${up?'Tạo tài khoản':'Đăng nhập'}</button></form><p class="sub">${up?'Đã có tài khoản?':'Chưa có tài khoản?'} <a href="#" id="sw">${up?'Đăng nhập':'Đăng ký'}</a></p><label class="btn">Khôi phục từ file sao lưu<input type="file" id="im" accept=".json" hidden></label>${up?'<p class="sub" style="margin-top:10px">Yêu thích và lịch sử đang xem sẽ được chuyển vào tài khoản mới.</p>':''}`);
+  modal(`<h2>${up?'Đăng ký':'Đăng nhập'}</h2><form id="af"><input class="fld" id="un" placeholder="Tên đăng nhập" autocomplete="username" required><input class="fld" id="pw" type="password" placeholder="Mật khẩu (từ ${cloudOn()?6:4} ký tự)" autocomplete="${up?'new':'current'}-password" required><p class="er" id="er"></p><button class="pri">${up?'Tạo tài khoản':'Đăng nhập'}</button></form><p class="sub">${up?'Đã có tài khoản?':'Chưa có tài khoản?'} <a href="#" id="sw">${up?'Đăng nhập':'Đăng ký'}</a></p><label class="btn">Khôi phục từ file sao lưu<input type="file" id="im" accept=".json" hidden></label>${up?'<p class="sub" style="margin-top:10px">Yêu thích và lịch sử đang xem sẽ được chuyển vào tài khoản mới.</p>':''}${cloudOn()?'<p class="sub" style="margin-top:10px">Dữ liệu được sao lưu đám mây, đăng nhập trên máy khác vẫn còn nguyên.</p>':''}`);
   $('#sw').onclick=e=>{e.preventDefault();auth(up?'in':'up')};
   $('#im').onchange=e=>e.target.files[0]&&readF(e.target.files[0],restore);
   $('#af').onsubmit=async e=>{e.preventDefault();const n=$('#un').value.trim().toLowerCase(),p=$('#pw').value,er=$('#er');
     if(!/^[a-z0-9_.]{3,20}$/.test(n))return er.textContent='Tên 3–20 ký tự: chữ thường, số, dấu _ hoặc .';
+    if(cloudOn()){const ok=await cloudLogin(n,p,up,er);if(!ok)return;closeM();renderAcc();route();toast('Xin chào '+n);return}
     if(p.length<4)return er.textContent='Mật khẩu cần ít nhất 4 ký tự';
     if(up){if(db.u[n])return er.textContent='Tên này đã có người dùng';
       const s=Math.random().toString(36).slice(2);db.u[n]={s,h:await hash(p,s),av:null,fav:[...db.g.fav],his:[...db.g.his]};db.g={fav:[],his:[]}}
@@ -369,12 +412,20 @@ function auth(mode){
 }
 function prof(){
   const n=db.cur,u=db.u[n];
-  modal(`<h2>Tài khoản</h2><div class="pr">${avh(n,u.av,64)}<div><b>${esc(n)}</b><p class="sub">${u.fav.length} yêu thích · ${u.his.length} đã xem</p></div></div><label class="btn">Đổi avatar<input type="file" id="af" accept="image/*" hidden></label> <button class="btn" id="rm">Xóa ảnh</button><h2>Sao lưu</h2><p class="sub">Tải file về máy, khi đổi máy hoặc xóa dữ liệu trình duyệt thì khôi phục lại từ file này.</p><button class="btn" id="ex">Tải file sao lưu</button> <label class="btn">Khôi phục<input type="file" id="im" accept=".json" hidden></label><p style="margin-top:18px"><button class="btn" id="lo">Đăng xuất</button></p>`);
+  modal(`<h2>Tài khoản</h2><div class="pr">${avh(n,u.av,64)}<div><b>${esc(n)}</b><p class="sub">${u.fav.length} yêu thích · ${u.his.length} đã xem</p></div></div><label class="btn">Đổi avatar<input type="file" id="af" accept="image/*" hidden></label> <button class="btn" id="rm">Xóa ảnh</button>${cloudOn()?(u.cloud?`<h2>Sao lưu đám mây</h2><p class="sub">Tự động đồng bộ khi bạn thêm yêu thích hoặc xem phim.${u.sync?' Lần cuối: '+new Date(u.sync).toLocaleString('vi-VN')+'.':''}</p><button class="btn" id="cs">Đồng bộ ngay</button>`:`<h2>Sao lưu đám mây</h2><p class="sub">Nhập mật khẩu để bật sao lưu, dùng được trên nhiều thiết bị.</p><input class="fld" id="cp" type="password" placeholder="Mật khẩu (từ 6 ký tự)" autocomplete="current-password"><p class="er" id="ce"></p><button class="btn" id="cb">Bật sao lưu đám mây</button>`):''}<h2>Sao lưu thủ công</h2><p class="sub">Tải file về máy, khi đổi máy hoặc xóa dữ liệu trình duyệt thì khôi phục lại từ file này.</p><button class="btn" id="ex">Tải file sao lưu</button> <label class="btn">Khôi phục<input type="file" id="im" accept=".json" hidden></label><p style="margin-top:18px"><button class="btn" id="lo">Đăng xuất</button></p>`);
   $('#af').onchange=e=>{const f=e.target.files[0];if(!f)return;const im=new Image();im.onload=()=>{const c=document.createElement('canvas');c.width=c.height=96;const s=Math.min(im.width,im.height);c.getContext('2d').drawImage(im,(im.width-s)/2,(im.height-s)/2,s,s,0,0,96,96);u.av=c.toDataURL('image/jpeg',.8);save();renderAcc();prof()};im.src=URL.createObjectURL(f)};
   $('#rm').onclick=()=>{u.av=null;save();renderAcc();prof()};
   $('#ex').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify({app:'cine-play',user:n,data:u})],{type:'application/json'}));a.download='cine-play-'+n+'.json';a.click()};
   $('#im').onchange=e=>e.target.files[0]&&readF(e.target.files[0],restore);
   $('#lo').onclick=()=>{db.cur=null;save();closeM();renderAcc();route()};
+  if($('#cs'))$('#cs').onclick=async()=>{const r=await pullSync(u,true);if(r===null)return toast('Không đồng bộ được, kiểm tra mạng');if(r===false)try{await cPut(u)}catch(e){return toast('Không đồng bộ được, kiểm tra mạng')}toast('Đã đồng bộ');route();prof()};
+  if($('#cb'))$('#cb').onclick=async()=>{const p=$('#cp').value,er=$('#ce');
+    if(p.length<6)return er.textContent='Mật khẩu cần ít nhất 6 ký tự';
+    if(u.h!==await hash(p,u.s))return er.textContent='Sai mật khẩu';
+    er.textContent='Đang kết nối…';
+    try{let c;try{c=await cAuth(n,p,true)}catch(e){if(/EMAIL_EXISTS/.test(e.message))c=await cAuth(n,p,false);else throw e}
+      u.cloud=c;const d=await cGet(u);if(d)mergeIn(u,d);await cPut(u);save();toast('Đã bật sao lưu đám mây');route();prof()}
+    catch(e){u.cloud=null;er.textContent=/INVALID|PASSWORD/.test(e.message||'')?'Tên này đã có trên đám mây với mật khẩu khác':'Không kết nối được đám mây'}};
 }
 const ic=d=>`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="${d}"/></svg>`;
 $('#nav').innerHTML=[['home','#/','Trang chủ','M3 11l9-8 9 8v10h-6v-6H9v6H3z'],['le','#/c/phim-le','Phim lẻ','M4 4h16v16H4zM4 9h16M4 15h16M9 4v16M15 4v16'],['bo','#/c/phim-bo','Phim bộ','M3 6h18v12H3zM8 21h8M12 18v3'],['cat','#/cat','Thể loại','M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z'],['me','#/me','Cá nhân','M12 12a4 4 0 100-8 4 4 0 000 8zM4 21c0-4 4-6 8-6s8 2 8 6']].map(x=>`<a href="${x[1]}" data-s="${x[0]}">${ic(x[3])}<span>${x[2]}</span></a>`).join('');
@@ -589,6 +640,8 @@ function route(){
 }
 try{const ic0=document.querySelector('link[rel=apple-touch-icon]').href,fi=document.createElement('link');fi.rel='icon';fi.href=ic0;document.head.append(fi);const mf={name:'Flix Anime',short_name:'Flix Anime',start_url:location.href.split('#')[0],display:'standalone',background_color:'#0b0710',theme_color:'#ff4f9a',icons:[{src:ic0,sizes:'192x192',type:'image/png'},{src:ic0,sizes:'512x512',type:'image/png',purpose:'any'}]},l=document.createElement('link');l.rel='manifest';l.href=URL.createObjectURL(new Blob([JSON.stringify(mf)],{type:'application/manifest+json'}));document.head.append(l)}catch(e){}
 addEventListener('hashchange',route);renderAcc();route();
+const resync=async()=>{const u=db.cur&&db.u[db.cur];if(await pullSync(u,false))route()};
+resync();document.addEventListener('visibilitychange',()=>{if(!document.hidden)resync()});
 </script>
 </body>
 </html>
